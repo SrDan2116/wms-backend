@@ -38,7 +38,7 @@ public class AuthenticationService {
         usuario.setObjetivo(request.getObjetivo());
         usuario.setIntensidadObjetivo(request.getIntensidadObjetivo());
         
-        // 2. MAGIA: Calcular Macros Automáticamente (Fórmula Mifflin-St Jeor simplificada)
+        // 2. MAGIA: Calcular Macros Automáticamente (Fórmula Mifflin-St Jeor Ajustada)
         calcularMacrosIniciales(usuario);
 
         // 3. Guardar y Generar Token
@@ -86,29 +86,47 @@ public class AuthenticationService {
 
         // 4. Ajuste según Objetivo (Superávit o Déficit)
         double caloriasFinales = tdee;
+        
+        // NUEVO AJUSTE: Valores más precisos basados en estudios (100, 300, 500)
         int ajusteCalorias = switch (u.getIntensidadObjetivo()) {
-            case LENTO -> 250;
-            case NORMAL -> 400; // Estándar recomendado
-            case AGRESIVO -> 600; // Un poco fuerte
+            case LENTO -> 100;    // Déficit/Superávit muy ligero
+            case NORMAL -> 300;   // Estándar (Recomendado)
+            case AGRESIVO -> 500; // Fuerte (Máximo recomendado para no perder músculo)
         };
 
         switch (u.getObjetivo()) {
-            case PERDER_GRASA -> caloriasFinales -= ajusteCalorias;
-            case GANAR_MASA -> caloriasFinales += ajusteCalorias;
-            case MANTENER, RECOMPOSICION_CORPORAL -> { /* Se mantiene en TDEE */ }
+            case PERDER_GRASA -> {
+                caloriasFinales -= ajusteCalorias;
+            }
+            case GANAR_MASA -> {
+                caloriasFinales += ajusteCalorias;
+            }
+            case MANTENER -> { 
+                /* Se mantiene en TDEE exacto */ 
+            }
+            case RECOMPOSICION_CORPORAL -> {
+                // LÓGICA ACTUALIZADA: 
+                // La recomposición requiere un déficit leve para oxidar grasa 
+                // mientras la proteína alta protege el músculo.
+                caloriasFinales -= ajusteCalorias;
+            }
         }
 
         // 5. Reparto de Macros (Aproximación Estándar Fitness)
-        // Proteína: 2g por kg de peso (aprox)
+        // Proteína: 2g por kg de peso (Para recomposición es vital mantenerla alta)
         int proteinas = (int) (u.getPesoInicial().doubleValue() * 2.0);
-        // Grasas: 0.8g por kg
+        
+        // Grasas: 0.9g por kg (Salud hormonal)
         int grasas = (int) (u.getPesoInicial().doubleValue() * 0.9);
-        // Carbohidratos: El resto de calorías
+        
+        // Carbohidratos: El resto de calorías (Energía para entrenar)
         // 1g Proteina = 4 cal, 1g Grasa = 9 cal, 1g Carbo = 4 cal
         int calProteina = proteinas * 4;
         int calGrasa = grasas * 9;
+        
+        // Evitar negativos si el déficit es muy agresivo en personas muy livianas
         int calRestantes = (int) caloriasFinales - calProteina - calGrasa;
-        int carbohidratos = calRestantes / 4;
+        int carbohidratos = Math.max(0, calRestantes / 4);
 
         // Setear valores
         u.setCaloriasObjetivo((int) caloriasFinales);
