@@ -1,4 +1,4 @@
-package com.aliaga.fit;
+package com.aliaga.fittrack;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
