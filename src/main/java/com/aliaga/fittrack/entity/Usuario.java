@@ -4,6 +4,8 @@ import com.aliaga.fittrack.enums.Genero;
 import com.aliaga.fittrack.enums.Intensidad;
 import com.aliaga.fittrack.enums.NivelActividad;
 import com.aliaga.fittrack.enums.Objetivo;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.*;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
@@ -33,6 +35,7 @@ public class Usuario implements UserDetails {
     private String email;
 
     @Column(nullable = false)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // <--- AGREGAR ESTO
     private String password;
 
     @Column(name = "fecha_registro")
