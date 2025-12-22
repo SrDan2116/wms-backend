@@ -15,14 +15,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
-@RequestMapping("/api/historial") // <--- OJO: ESTA ES LA RUTA REAL
+@RequestMapping("/api/historial") 
 @RequiredArgsConstructor
 public class HistorialController {
 
     private final HistorialRepository historialRepository;
     private final UsuarioRepository usuarioRepository;
 
-    // 1. OBTENER TODO MI HISTORIAL
+    // 1. OBTENER TODO EL HISTORIAL
     @GetMapping
     public ResponseEntity<List<HistorialEntrenamiento>> miHistorial() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
