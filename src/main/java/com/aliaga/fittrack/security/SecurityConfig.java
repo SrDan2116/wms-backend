@@ -26,14 +26,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF (estándar para APIs REST)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configuración de CORS
             .authorizeHttpRequests(auth -> auth
-            		.requestMatchers("/api/auth/**").permitAll()
-            		.requestMatchers("/api/**").authenticated()
+                // 1. Permite acceso LIBRE a Login y Registro
+                .requestMatchers("/api/auth/**").permitAll()
+                
+                // 2. REGLA MAESTRA: Todo lo demás que empiece por /api/ requiere TOKEN.
+                // Esto autoriza automáticamente: /api/historial, /api/rutinas, /api/pesos, /api/usuario
+                .requestMatchers("/api/**").authenticated()
+                
+                // 3. Cualquier otra solicitud desconocida también se bloquea por seguridad
                 .anyRequest().authenticated()
             )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Sin estado (JWT)
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -44,12 +50,15 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         
+        // Define aquí las URLs de tu Frontend (Local y Producción)
         config.setAllowedOriginPatterns(List.of(
             "https://candid-cheesecake-ed013b.netlify.app", 
             "http://localhost:4200" 
         ));
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Métodos HTTP permitidos (Importante incluir DELETE para borrar entrenos)
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
