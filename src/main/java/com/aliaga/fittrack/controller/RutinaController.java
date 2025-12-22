@@ -7,6 +7,7 @@ import com.aliaga.fittrack.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional; // <--- IMPORTANTE
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -78,7 +79,9 @@ public class RutinaController {
         return ResponseEntity.noContent().build();
     }
     
+    // 4. ACTUALIZAR RUTINA
     @PutMapping("/{id}")
+    @Transactional // <--- ESTO ASEGURA QUE EL BORRADO Y LA INSERCIÓN SEAN ATÓMICOS
     public ResponseEntity<Rutina> actualizarRutina(@PathVariable Long id, @RequestBody RutinaRequest req) {
         Rutina rutinaExistente = rutinaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Rutina no encontrada"));
@@ -87,10 +90,11 @@ public class RutinaController {
         rutinaExistente.setNombre(req.getNombre());
         rutinaExistente.setDescripcion(req.getDescripcion());
 
-        // 2. Limpiar días antiguos (orphanRemoval en la entidad se encargará de borrarlos de la BD)
+        // 2. Limpiar días antiguos
+        // Gracias a orphanRemoval=true en la entidad, esto BORRA los registros de la BD
         rutinaExistente.getDias().clear();
 
-        // 3. Agregar los nuevos días (Copiamos la lógica del PostMapping)
+        // 3. Agregar los nuevos días
         if (req.getDias() != null) {
             for (RutinaRequest.DiaRequest diaReq : req.getDias()) {
                 DiaRutina dia = DiaRutina.builder()
@@ -106,7 +110,7 @@ public class RutinaController {
                                 .seriesObjetivo(ejReq.getSeriesObjetivo())
                                 .repeticionesObjetivo(ejReq.getRepeticionesObjetivo())
                                 .notas(ejReq.getNotas())
-                                .diaRutina(dia)
+                                .diaRutina(dia) // Enlazamos con el día nuevo
                                 .build();
                         dia.getEjercicios().add(ejercicio);
                     }
@@ -115,7 +119,8 @@ public class RutinaController {
             }
         }
 
-        rutinaRepository.save(rutinaExistente);
-        return ResponseEntity.ok(rutinaExistente);
+        // 4. Guardar los cambios
+        Rutina actualizada = rutinaRepository.save(rutinaExistente);
+        return ResponseEntity.ok(actualizada);
     }
 }
