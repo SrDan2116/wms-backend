@@ -32,8 +32,6 @@ public class HistorialController {
     // 2. GUARDAR UN ENTRENAMIENTO TERMINADO
     @PostMapping
     public ResponseEntity<HistorialEntrenamiento> guardarEntreno(@RequestBody FinalizarEntrenoRequest req) {
-        // ... (Tu código de guardar que ya tienes está perfecto, déjalo igual) ...
-        // Resumido para ahorrar espacio en la respuesta
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Usuario usuario = usuarioRepository.findByEmail(email).orElseThrow();
         
@@ -44,9 +42,6 @@ public class HistorialController {
                 .fechaHora(req.getFechaHora() != null ? req.getFechaHora() : LocalDateTime.now())
                 .ejerciciosRealizados(new ArrayList<>())
                 .build();
-        
-        // ... Logica de mapeo de ejercicios ...
-        // (Mantén tu lógica original aquí)
 
         if (req.getEjercicios() != null) {
             for (FinalizarEntrenoRequest.EjercicioRealizadoDTO ejDto : req.getEjercicios()) {
