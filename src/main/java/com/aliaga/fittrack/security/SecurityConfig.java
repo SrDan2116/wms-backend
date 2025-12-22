@@ -26,20 +26,19 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF (estándar para APIs REST)
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Configuración de CORS
+            .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activar CORS configurado abajo
             .authorizeHttpRequests(auth -> auth
-                // 1. Permite acceso LIBRE a Login y Registro
+                // 1. Acceso público
                 .requestMatchers("/api/auth/**").permitAll()
                 
-                // 2. REGLA MAESTRA: Todo lo demás que empiece por /api/ requiere TOKEN.
-                // Esto autoriza automáticamente: /api/historial, /api/rutinas, /api/pesos, /api/usuario
+                // 2. Acceso protegido (Regla Maestra)
                 .requestMatchers("/api/**").authenticated()
                 
-                // 3. Cualquier otra solicitud desconocida también se bloquea por seguridad
+                // 3. Candado final
                 .anyRequest().authenticated()
             )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Sin estado (JWT)
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -50,14 +49,20 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // --- CAMBIO CLAVE AQUÍ ---
-        // En lugar de listas específicas, ponemos un comodín "*" para aceptar TODO.
-        config.setAllowedOriginPatterns(List.of("*")); 
+        // --- SEGURIDAD CORS ---
+        // Solo permitimos peticiones desde TU Localhost y TU Netlify
+        config.setAllowedOriginPatterns(List.of(
+            "http://localhost:4200",                    // Tu entorno local Angular
+            "https://candid-cheesecake-ed013b.netlify.app" // Tu URL de producción
+        ));
+
+        // Métodos permitidos (Incluido DELETE para borrar entrenos)
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         
-        // Aseguramos que todos los métodos pasen (incluido DELETE y OPTIONS)
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
-        
+        // Cabeceras permitidas (Authorization, Content-Type, etc.)
         config.setAllowedHeaders(List.of("*"));
+        
+        // Permitir envío de cookies/credenciales si fuera necesario
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
