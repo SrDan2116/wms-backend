@@ -29,13 +29,13 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF
             .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activar CORS configurado abajo
             .authorizeHttpRequests(auth -> auth
-                // 1. Acceso público
+
                 .requestMatchers("/api/auth/**").permitAll()
                 
-                // 2. Acceso protegido (Regla Maestra)
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                
                 .requestMatchers("/api/**").authenticated()
                 
-                // 3. Candado final
                 .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

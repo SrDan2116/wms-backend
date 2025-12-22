@@ -4,6 +4,7 @@ import com.aliaga.fittrack.enums.Genero;
 import com.aliaga.fittrack.enums.Intensidad;
 import com.aliaga.fittrack.enums.NivelActividad;
 import com.aliaga.fittrack.enums.Objetivo;
+import com.aliaga.fittrack.enums.Role;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -69,6 +70,12 @@ public class Usuario implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(name = "intensidad_objetivo")
     private Intensidad intensidadObjetivo;
+    
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
 
     @Column(name = "es_manual")
     private boolean esManual = false;
@@ -91,14 +98,25 @@ public class Usuario implements UserDetails {
         fechaRegistro = LocalDateTime.now();
     }
 
+    
+    // --- SISTEMA DE SUSPENSIÓN ---
+    @Column(name = "is_suspended")
+    private boolean isSuspended = false; 
+
+    @Column(name = "suspension_reason")
+    private String suspensionReason;
+
+    @Column(name = "suspension_ends_at")
+    private LocalDateTime suspensionEndsAt;
+    
     // =================================================================
     // MÉTODOS DE SECURITY
     // =================================================================
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // CORRECCIÓN: Devolvemos directamente el rol "USER" sin usar entidad externa
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        // AHORA ES DINÁMICO: Devuelve ROLE_ADMIN o ROLE_CLIENTE según la BD
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
     @Override
@@ -110,7 +128,9 @@ public class Usuario implements UserDetails {
     public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() { return true; }
+    public boolean isAccountNonLocked() {
+        return !isSuspended;
+    }
 
     @Override
     public boolean isCredentialsNonExpired() { return true; }

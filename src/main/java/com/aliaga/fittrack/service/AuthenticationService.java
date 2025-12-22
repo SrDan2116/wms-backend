@@ -4,6 +4,7 @@ import com.aliaga.fittrack.dto.AuthenticationRequest;
 import com.aliaga.fittrack.dto.AuthenticationResponse;
 import com.aliaga.fittrack.dto.RegisterRequest;
 import com.aliaga.fittrack.entity.Usuario;
+import com.aliaga.fittrack.enums.Role;
 import com.aliaga.fittrack.repository.UsuarioRepository;
 import com.aliaga.fittrack.security.JwtService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.Period;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +33,9 @@ public class AuthenticationService {
         usuario.setNombre(request.getNombre());
         usuario.setEmail(request.getEmail());
         usuario.setPassword(passwordEncoder.encode(request.getPassword()));
-        // NOTA: No seteamos rol aquí porque lo hardcodeamos en Usuario.java
+        
+        // --- ASIGNACIÓN DE ROL POR DEFECTO ---
+        usuario.setRole(Role.CLIENTE);
         
         // Asignar datos físicos (pueden ser null en registro rápido)
         usuario.setFechaNacimiento(request.getFechaNacimiento());
@@ -55,7 +60,6 @@ public class AuthenticationService {
         // 3. Guardar y Generar Token
         repository.save(usuario);
         var jwtToken = jwtService.generateToken(usuario);
-        
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .nombreUsuario(usuario.getNombre())
@@ -63,10 +67,41 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
+        // 1. Buscar usuario PRIMERO para verificar estado de suspensión
+        // (Aun no autenticamos contraseña, primero vemos si existe y si puede entrar)
+        var usuario = repository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // --- LÓGICA DE SUSPENSIÓN ---
+        if (usuario.isSuspended()) {
+            // Verificar si el tiempo de suspensión ya expiró
+            if (usuario.getSuspensionEndsAt() != null && LocalDateTime.now().isAfter(usuario.getSuspensionEndsAt())) {
+                // El castigo terminó: Levantamos la suspensión automáticamente
+                usuario.setSuspended(false);
+                usuario.setSuspensionReason(null);
+                usuario.setSuspensionEndsAt(null);
+                repository.save(usuario); // Guardamos el usuario "limpio"
+            } else {
+                // Sigue suspendido: Preparamos el mensaje de error
+                String fechaFin = usuario.getSuspensionEndsAt() != null 
+                    ? usuario.getSuspensionEndsAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) 
+                    : "Indefinida";
+                
+                throw new RuntimeException("CUENTA SUSPENDIDA ⛔. Razón: " + usuario.getSuspensionReason() + 
+                                           ". Acceso bloqueado hasta: " + fechaFin);
+            }
+        }
+
+        // 2. Si pasa la suspensión, validamos contraseña con Spring Security
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
-        var usuario = repository.findByEmail(request.getEmail()).orElseThrow();
+
+        // 3. ACTUALIZAR ULTIMA CONEXIÓN
+        usuario.setLastLogin(LocalDateTime.now());
+        repository.save(usuario);
+
+        // 4. Generar Token
         var jwtToken = jwtService.generateToken(usuario);
         return AuthenticationResponse.builder()
                 .token(jwtToken)
