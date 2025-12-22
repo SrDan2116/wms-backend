@@ -77,4 +77,45 @@ public class RutinaController {
         rutinaRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<Rutina> actualizarRutina(@PathVariable Long id, @RequestBody RutinaRequest req) {
+        Rutina rutinaExistente = rutinaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Rutina no encontrada"));
+
+        // 1. Actualizar datos básicos
+        rutinaExistente.setNombre(req.getNombre());
+        rutinaExistente.setDescripcion(req.getDescripcion());
+
+        // 2. Limpiar días antiguos (orphanRemoval en la entidad se encargará de borrarlos de la BD)
+        rutinaExistente.getDias().clear();
+
+        // 3. Agregar los nuevos días (Copiamos la lógica del PostMapping)
+        if (req.getDias() != null) {
+            for (RutinaRequest.DiaRequest diaReq : req.getDias()) {
+                DiaRutina dia = DiaRutina.builder()
+                        .nombre(diaReq.getNombre())
+                        .rutina(rutinaExistente) // Enlazamos con la rutina existente
+                        .ejercicios(new ArrayList<>())
+                        .build();
+
+                if (diaReq.getEjercicios() != null) {
+                    for (RutinaRequest.EjercicioRequest ejReq : diaReq.getEjercicios()) {
+                        Ejercicio ejercicio = Ejercicio.builder()
+                                .nombre(ejReq.getNombre())
+                                .seriesObjetivo(ejReq.getSeriesObjetivo())
+                                .repeticionesObjetivo(ejReq.getRepeticionesObjetivo())
+                                .notas(ejReq.getNotas())
+                                .diaRutina(dia)
+                                .build();
+                        dia.getEjercicios().add(ejercicio);
+                    }
+                }
+                rutinaExistente.getDias().add(dia);
+            }
+        }
+
+        rutinaRepository.save(rutinaExistente);
+        return ResponseEntity.ok(rutinaExistente);
+    }
 }
