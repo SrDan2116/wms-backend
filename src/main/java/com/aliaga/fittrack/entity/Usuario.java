@@ -5,9 +5,11 @@ import com.aliaga.fittrack.enums.Intensidad;
 import com.aliaga.fittrack.enums.NivelActividad;
 import com.aliaga.fittrack.enums.Objetivo;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,9 +21,11 @@ import java.util.Collection;
 import java.util.List;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "usuarios")
-// 1. AÑADIMOS ESTO: "implements UserDetails"
 public class Usuario implements UserDetails {
 
     @Id
@@ -35,13 +39,13 @@ public class Usuario implements UserDetails {
     private String email;
 
     @Column(nullable = false)
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // <--- AGREGAR ESTO
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro;
 
-    // --- DATOS FÍSICOS ---
+    // --- DATOS FÍSICOS (Permiten NULL para registro rápido) ---
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
@@ -49,12 +53,12 @@ public class Usuario implements UserDetails {
     private Genero genero;
 
     @Column(name = "altura_cm")
-    private Integer alturaCm;
+    private Integer alturaCm; 
 
     @Column(name = "peso_inicial")
     private BigDecimal pesoInicial;
 
-    // --- CONFIGURACIÓN TDEE Y OBJETIVOS ---
+    // --- CONFIGURACIÓN (Permiten NULL) ---
     @Enumerated(EnumType.STRING)
     @Column(name = "nivel_actividad")
     private NivelActividad nivelActividad;
@@ -64,12 +68,12 @@ public class Usuario implements UserDetails {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "intensidad_objetivo")
-    private Intensidad intensidadObjetivo; 
+    private Intensidad intensidadObjetivo;
 
     @Column(name = "es_manual")
-    private boolean esManual = false; 
+    private boolean esManual = false;
 
-    // --- MACROS CALCULADOS U OBJETIVO ---
+    // --- MACROS (Inicializan en 0 si no hay datos) ---
     @Column(name = "calorias_objetivo")
     private Integer caloriasObjetivo;
 
@@ -88,38 +92,29 @@ public class Usuario implements UserDetails {
     }
 
     // =================================================================
-    // MÉTODOS DE SECURITY (OBLIGATORIOS PARA UserDetails)
+    // MÉTODOS DE SECURITY
     // =================================================================
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Por ahora todos son usuarios normales (ROLE_USER)
+        // CORRECCIÓN: Devolvemos directamente el rol "USER" sin usar entidad externa
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override
     public String getUsername() {
-        // Para nosotros, el "username" es el email
         return email;
     }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
+    public boolean isAccountNonLocked() { return true; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return true;
-    }
+    public boolean isEnabled() { return true; }
 }
