@@ -50,14 +50,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // Define aquí las URLs de tu Frontend (Local y Producción)
-        config.setAllowedOriginPatterns(List.of(
-            "https://candid-cheesecake-ed013b.netlify.app", 
-            "http://localhost:4200" 
-        ));
-
-        // Métodos HTTP permitidos (Importante incluir DELETE para borrar entrenos)
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        // --- CAMBIO CLAVE AQUÍ ---
+        // En lugar de listas específicas, ponemos un comodín "*" para aceptar TODO.
+        config.setAllowedOriginPatterns(List.of("*")); 
+        
+        // Aseguramos que todos los métodos pasen (incluido DELETE y OPTIONS)
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"));
         
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
