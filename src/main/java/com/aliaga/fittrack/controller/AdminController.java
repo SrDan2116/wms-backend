@@ -3,6 +3,7 @@ package com.aliaga.fittrack.controller;
 import com.aliaga.fittrack.dto.SuspensionRequest;
 import com.aliaga.fittrack.entity.SolicitudEliminacion;
 import com.aliaga.fittrack.entity.Usuario;
+import com.aliaga.fittrack.enums.EstadoSolicitud;
 import com.aliaga.fittrack.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,11 +21,8 @@ public class AdminController {
     private final UsuarioRepository usuarioRepository;
     private final SolicitudEliminacionRepository solicitudRepository;
     
-    // Inyectamos repositorios hijos para limpieza manual si es necesario
-    private final RutinaRepository rutinaRepository;
-    private final HistorialRepository historialRepository;
-    private final PesoRepository pesoRepository;
     private final PasswordTokenRepository tokenRepository;
+    // Otros repositorios opcionales si usas borrado manual...
 
     // 1. VER TODOS LOS USUARIOS
     @GetMapping("/users")
@@ -32,10 +30,27 @@ public class AdminController {
         return ResponseEntity.ok(usuarioRepository.findAll());
     }
 
-    // 2. VER SOLICITUDES DE ELIMINACIÓN
+    // 2. VER SOLICITUDES (Devuelve todas, pendientes primero)
     @GetMapping("/deletion-requests")
     public ResponseEntity<List<SolicitudEliminacion>> getDeletionRequests() {
+        // Podrías usar findByEstado(PENDIENTE) si solo quieres las nuevas
         return ResponseEntity.ok(solicitudRepository.findAll());
+    }
+
+    // --- NUEVO: CONTADOR PARA BADGE DE CAMPANA ---
+    @GetMapping("/notifications-count")
+    public ResponseEntity<Long> getPendingCount() {
+        return ResponseEntity.ok(solicitudRepository.countByEstado(EstadoSolicitud.PENDIENTE));
+    }
+
+    // --- NUEVO: MARCAR COMO ATENDIDO (Sin borrar usuario) ---
+    @PutMapping("/request/{id}/mark-handled")
+    public ResponseEntity<Void> markAsHandled(@PathVariable Long id) {
+        SolicitudEliminacion sol = solicitudRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Solicitud no encontrada"));
+        sol.setEstado(EstadoSolicitud.ATENDIDO);
+        solicitudRepository.save(sol);
+        return ResponseEntity.ok().build();
     }
 
     // 3. SUSPENDER USUARIO
@@ -73,26 +88,16 @@ public class AdminController {
         return ResponseEntity.ok(usuarioRepository.save(user));
     }
 
-    // 5. ELIMINAR CUENTA DEFINITIVAMENTE (Limpia todo)
+    // 5. ELIMINAR CUENTA DEFINITIVAMENTE
     @DeleteMapping("/user/{id}")
     @Transactional
     public ResponseEntity<Void> deleteUserPermanently(@PathVariable Long id) {
         Usuario user = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // 1. Limpiar dependencias (Si no usaste CascadeType.REMOVE en Usuario)
-        // Por seguridad, limpiamos todo explícitamente
         tokenRepository.findByUsuario(user).ifPresent(tokenRepository::delete);
         solicitudRepository.deleteByUsuarioId(id);
         
-        // Asumiendo que rutinas/historial tienen FKs que saltarían si no los borramos:
-        // (Si tus entidades tienen orphanRemoval/cascade, esto puede no ser necesario, 
-        // pero es más seguro hacerlo así en el controller de Admin)
-        // rutinaRepository.deleteByUsuario(user); // Implementar si hace falta
-        // historialRepository.deleteByUsuario(user);
-        // pesoRepository.deleteByUsuario(user);
-
-        // 2. Borrar Usuario
         usuarioRepository.delete(user);
         
         return ResponseEntity.noContent().build();

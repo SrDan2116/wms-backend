@@ -1,5 +1,6 @@
 package com.aliaga.fittrack.entity;
 
+import com.aliaga.fittrack.enums.EstadoSolicitud;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,10 +28,14 @@ public class SolicitudEliminacion {
     @Column(columnDefinition = "TEXT")
     private String motivo;
 
+    @Enumerated(EnumType.STRING)
+    private EstadoSolicitud estado;
+
     private LocalDateTime fechaSolicitud;
 
     @PrePersist
     protected void onCreate() {
         fechaSolicitud = LocalDateTime.now();
+        if (estado == null) estado = EstadoSolicitud.PENDIENTE;
     }
 }
