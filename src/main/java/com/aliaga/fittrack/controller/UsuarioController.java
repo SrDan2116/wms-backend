@@ -1,12 +1,17 @@
 package com.aliaga.fittrack.controller;
 
+import com.aliaga.fittrack.dto.SolicitudEliminacionRequest;
 import com.aliaga.fittrack.dto.UpdateProfileRequest;
+import com.aliaga.fittrack.entity.SolicitudEliminacion;
 import com.aliaga.fittrack.entity.Usuario;
 import com.aliaga.fittrack.enums.Intensidad;
 import com.aliaga.fittrack.enums.NivelActividad;
 import com.aliaga.fittrack.enums.Objetivo;
+import com.aliaga.fittrack.repository.SolicitudEliminacionRepository;
 import com.aliaga.fittrack.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +26,8 @@ import java.time.Period;
 public class UsuarioController {
 
     private final UsuarioRepository usuarioRepository;
+    @Autowired
+    private final SolicitudEliminacionRepository solicitudRepository;
 
     @GetMapping("/me")
     public ResponseEntity<Usuario> miPerfil() {
@@ -100,5 +107,23 @@ public class UsuarioController {
         u.setProteinasObjetivo(proteinas);
         u.setGrasasObjetivo(grasas);
         u.setCarbohidratosObjetivo(carbohidratos);
+    }
+    
+    @PostMapping("/solicitar-eliminacion")
+    public ResponseEntity<String> solicitarEliminacion(@RequestBody SolicitudEliminacionRequest req) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        Usuario usuario = usuarioRepository.findByEmail(email).orElseThrow();
+
+        if (solicitudRepository.existsByUsuarioEmail(email)) {
+            return ResponseEntity.badRequest().body("Ya tienes una solicitud en proceso.");
+        }
+
+        SolicitudEliminacion solicitud = SolicitudEliminacion.builder()
+                .usuario(usuario)
+                .motivo(req.getMotivo())
+                .build();
+
+        solicitudRepository.save(solicitud);
+        return ResponseEntity.ok("Solicitud enviada al administrador.");
     }
 }
