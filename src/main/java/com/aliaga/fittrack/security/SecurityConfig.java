@@ -30,7 +30,13 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll() // Rutas públicas (Login/Registro)
-                .anyRequest().authenticated() // Todo lo demás requiere Token
+                
+                // --- AGREGAMOS ESTAS LÍNEAS EXPLÍCITAMENTE ---
+                .requestMatchers("/api/rutinas/**").authenticated()
+                .requestMatchers("/api/entrenamientos/**").authenticated()
+                .requestMatchers("/api/pesos/**").authenticated()
+                
+                .anyRequest().authenticated() // Todo lo demás también requiere Token
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
