@@ -15,14 +15,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
-@RequestMapping("/api/historial")
+@RequestMapping("/api/historial") // <--- OJO: ESTA ES LA RUTA REAL
 @RequiredArgsConstructor
 public class HistorialController {
 
     private final HistorialRepository historialRepository;
     private final UsuarioRepository usuarioRepository;
 
-    // 1. OBTENER TODO MI HISTORIAL (Calendario)
+    // 1. OBTENER TODO MI HISTORIAL
     @GetMapping
     public ResponseEntity<List<HistorialEntrenamiento>> miHistorial() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -32,11 +32,11 @@ public class HistorialController {
     // 2. GUARDAR UN ENTRENAMIENTO TERMINADO
     @PostMapping
     public ResponseEntity<HistorialEntrenamiento> guardarEntreno(@RequestBody FinalizarEntrenoRequest req) {
+        // ... (Tu código de guardar que ya tienes está perfecto, déjalo igual) ...
+        // Resumido para ahorrar espacio en la respuesta
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        // Crear Cabecera
+        Usuario usuario = usuarioRepository.findByEmail(email).orElseThrow();
+        
         HistorialEntrenamiento historial = HistorialEntrenamiento.builder()
                 .usuario(usuario)
                 .nombreRutina(req.getNombreRutina())
@@ -44,11 +44,12 @@ public class HistorialController {
                 .fechaHora(req.getFechaHora() != null ? req.getFechaHora() : LocalDateTime.now())
                 .ejerciciosRealizados(new ArrayList<>())
                 .build();
+        
+        // ... Logica de mapeo de ejercicios ...
+        // (Mantén tu lógica original aquí)
 
-        // Mapear Ejercicios y Series
         if (req.getEjercicios() != null) {
             for (FinalizarEntrenoRequest.EjercicioRealizadoDTO ejDto : req.getEjercicios()) {
-                
                 RegistroEjercicio regEj = RegistroEjercicio.builder()
                         .nombreEjercicio(ejDto.getNombre())
                         .historial(historial)
@@ -74,5 +75,12 @@ public class HistorialController {
 
         historialRepository.save(historial);
         return ResponseEntity.ok(historial);
+    }
+
+    // 3. NUEVO: ELIMINAR HISTORIAL (AGREGAR ESTO)
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminarHistorial(@PathVariable Long id) {
+        historialRepository.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -33,7 +33,7 @@ public class SecurityConfig {
                 
                 // --- AGREGAMOS ESTAS LÍNEAS EXPLÍCITAMENTE ---
                 .requestMatchers("/api/rutinas/**").authenticated()
-                .requestMatchers("/api/entrenamientos/**").authenticated()
+                .requestMatchers("/api/historial/**").authenticated()
                 .requestMatchers("/api/pesos/**").authenticated()
                 
                 .anyRequest().authenticated() // Todo lo demás también requiere Token
