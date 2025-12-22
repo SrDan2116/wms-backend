@@ -46,7 +46,7 @@ public class Usuario implements UserDetails {
     @Column(name = "fecha_registro")
     private LocalDateTime fechaRegistro;
 
-    // --- DATOS FÍSICOS (Permiten NULL para registro rápido) ---
+    // --- DATOS FÍSICOS ---
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
@@ -59,7 +59,7 @@ public class Usuario implements UserDetails {
     @Column(name = "peso_inicial")
     private BigDecimal pesoInicial;
 
-    // --- CONFIGURACIÓN (Permiten NULL) ---
+    // --- CONFIGURACIÓN ---
     @Enumerated(EnumType.STRING)
     @Column(name = "nivel_actividad")
     private NivelActividad nivelActividad;
@@ -80,7 +80,7 @@ public class Usuario implements UserDetails {
     @Column(name = "es_manual")
     private boolean esManual = false;
 
-    // --- MACROS (Inicializan en 0 si no hay datos) ---
+    // --- MACROS ---
     @Column(name = "calorias_objetivo")
     private Integer caloriasObjetivo;
 
@@ -98,10 +98,10 @@ public class Usuario implements UserDetails {
         fechaRegistro = LocalDateTime.now();
     }
 
-    
-    // --- SISTEMA DE SUSPENSIÓN ---
+    // --- SISTEMA DE SUSPENSIÓN (CORREGIDO) ---
+    // Usamos 'Boolean' (objeto) en vez de 'boolean' (primitivo) para aceptar NULLs de la BD sin error
     @Column(name = "is_suspended")
-    private boolean isSuspended = false; 
+    private Boolean isSuspended = false; 
 
     @Column(name = "suspension_reason")
     private String suspensionReason;
@@ -109,13 +109,21 @@ public class Usuario implements UserDetails {
     @Column(name = "suspension_ends_at")
     private LocalDateTime suspensionEndsAt;
     
+    // Método auxiliar seguro para evitar NullPointerException en el resto de la app
+    public boolean isSuspended() {
+        return Boolean.TRUE.equals(this.isSuspended);
+    }
+    
+    public void setSuspended(boolean suspended) {
+        this.isSuspended = suspended;
+    }
+
     // =================================================================
     // MÉTODOS DE SECURITY
     // =================================================================
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // AHORA ES DINÁMICO: Devuelve ROLE_ADMIN o ROLE_CLIENTE según la BD
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
@@ -129,7 +137,8 @@ public class Usuario implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return !isSuspended;
+        // Usamos nuestro método auxiliar seguro
+        return !isSuspended();
     }
 
     @Override
