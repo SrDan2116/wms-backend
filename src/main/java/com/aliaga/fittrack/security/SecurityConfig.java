@@ -26,14 +26,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable()) // Deshabilitar CSRF
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Activar CORS configurado abajo
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-
+                // 1. Acceso público (Login, Registro, etc.)
                 .requestMatchers("/api/auth/**").permitAll()
                 
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // 2. CAMBIO AQUÍ: Permitir acceso a Admin a CUALQUIER usuario autenticado
+                // Antes: .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").authenticated() 
                 
+                // 3. Resto de la API protegida
                 .requestMatchers("/api/**").authenticated()
                 
                 .anyRequest().authenticated()
@@ -49,20 +52,15 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // --- SEGURIDAD CORS ---
-        // Solo permitimos peticiones desde TU Localhost y TU Netlify
+        // Ajusta esto según tus URLs reales
         config.setAllowedOriginPatterns(List.of(
-            "http://localhost:4200",                    // Tu entorno local Angular
-            "https://candid-cheesecake-ed013b.netlify.app" // Tu URL de producción
+            "http://localhost:4200", 
+            "https://candid-cheesecake-ed013b.netlify.app",
+            "*" // OJO: Útil para dev, pero cuidado en producción estricta
         ));
 
-        // Métodos permitidos (Incluido DELETE para borrar entrenos)
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        
-        // Cabeceras permitidas (Authorization, Content-Type, etc.)
         config.setAllowedHeaders(List.of("*"));
-        
-        // Permitir envío de cookies/credenciales si fuera necesario
         config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
