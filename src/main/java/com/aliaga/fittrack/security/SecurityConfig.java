@@ -29,14 +29,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**").permitAll() // Rutas públicas (Login/Registro)
+            		.requestMatchers("/api/auth/**").permitAll()
                 
-                // --- AGREGAMOS ESTAS LÍNEAS EXPLÍCITAMENTE ---
-                .requestMatchers("/api/rutinas/**").authenticated()
-                .requestMatchers("/api/historial/**").authenticated()
-                .requestMatchers("/api/pesos/**").authenticated()
+            		.requestMatchers("/api/**").authenticated()
                 
-                .anyRequest().authenticated() // Todo lo demás también requiere Token
+                .anyRequest().authenticated()
             )
             .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
