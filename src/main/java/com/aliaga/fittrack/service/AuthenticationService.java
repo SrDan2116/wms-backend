@@ -6,6 +6,7 @@ import com.aliaga.fittrack.dto.RegisterRequest;
 import com.aliaga.fittrack.entity.PasswordResetToken;
 import com.aliaga.fittrack.entity.Usuario;
 import com.aliaga.fittrack.enums.Role;
+import com.aliaga.fittrack.exception.UserSuspendedException; // Asegúrate de tener este import
 import com.aliaga.fittrack.repository.PasswordTokenRepository;
 import com.aliaga.fittrack.repository.UsuarioRepository;
 import com.aliaga.fittrack.security.JwtService;
@@ -18,7 +19,6 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Period;
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Service
@@ -65,28 +65,34 @@ public class AuthenticationService {
     }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
+        // 1. Buscar usuario para verificar estado antes de autenticar
         var usuario = repository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        // 2. Lógica de Suspensión
         if (usuario.isSuspended()) {
+            // Verificar si el tiempo de castigo ya terminó
             if (usuario.getSuspensionEndsAt() != null && LocalDateTime.now().isAfter(usuario.getSuspensionEndsAt())) {
+                // Levantar castigo automáticamente
                 usuario.setSuspended(false);
                 usuario.setSuspensionReason(null);
                 usuario.setSuspensionEndsAt(null);
                 repository.save(usuario);
             } else {
-                String fechaFin = usuario.getSuspensionEndsAt() != null 
-                    ? usuario.getSuspensionEndsAt().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) 
-                    : "Indefinida";
-                throw new RuntimeException("CUENTA SUSPENDIDA ⛔. Razón: " + usuario.getSuspensionReason() + 
-                                           ". Acceso bloqueado hasta: " + fechaFin);
+                // Si sigue suspendido, lanzamos la excepción personalizada con los datos
+                throw new UserSuspendedException(
+                    usuario.getSuspensionReason(),
+                    usuario.getSuspensionEndsAt()
+                );
             }
         }
 
+        // 3. Autenticación estándar de Spring Security
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
+        // 4. Actualizar último login
         usuario.setLastLogin(LocalDateTime.now());
         repository.save(usuario);
 
@@ -97,26 +103,22 @@ public class AuthenticationService {
                 .build();
     }
 
-    // --- NUEVO: RECUPERACIÓN DE CONTRASEÑA ---
+    // --- RECUPERACIÓN DE CONTRASEÑA ---
 
     public void forgotPassword(String email) {
         Usuario usuario = repository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Si ya hay un token viejo, lo borramos
         tokenRepository.findByUsuario(usuario).ifPresent(tokenRepository::delete);
 
-        // Crear nuevo token
         String token = UUID.randomUUID().toString();
         PasswordResetToken resetToken = PasswordResetToken.builder()
                 .token(token)
                 .usuario(usuario)
-                .expiryDate(LocalDateTime.now().plusMinutes(15)) // 15 min de validez
+                .expiryDate(LocalDateTime.now().plusMinutes(15))
                 .build();
         
         tokenRepository.save(resetToken);
-
-        // Enviar Email (Simulado)
         emailService.sendResetToken(email, token);
     }
 
@@ -131,12 +133,10 @@ public class AuthenticationService {
         Usuario usuario = resetToken.getUsuario();
         usuario.setPassword(passwordEncoder.encode(newPassword));
         repository.save(usuario);
-
-        // Borrar el token usado
         tokenRepository.delete(resetToken);
     }
     
-    // --- MÉTODOS AUXILIARES (IGUAL QUE ANTES) ---
+    // --- MÉTODOS AUXILIARES ---
     private boolean tieneDatosFisicosCompletos(Usuario u) {
         return u.getPesoInicial() != null 
             && u.getAlturaCm() != null 
