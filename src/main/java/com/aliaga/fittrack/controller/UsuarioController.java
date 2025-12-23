@@ -126,4 +126,10 @@ public class UsuarioController {
         solicitudRepository.save(solicitud);
         return ResponseEntity.ok("Solicitud enviada al administrador.");
     }
+    
+    // Para mantener vivo el server
+    @GetMapping("/ping")
+    public ResponseEntity<String> ping() {
+        return ResponseEntity.ok("Pong!"); 
+    }
 }
