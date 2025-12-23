@@ -20,9 +20,12 @@ public class AdminController {
 
     private final UsuarioRepository usuarioRepository;
     private final SolicitudEliminacionRepository solicitudRepository;
-    
     private final PasswordTokenRepository tokenRepository;
-    // Otros repositorios opcionales si usas borrado manual...
+    
+    // Inject repositories for data cleanup
+    private final PesoRepository pesoRepository;
+    private final RutinaRepository rutinaRepository;
+    private final HistorialRepository historialRepository;
 
     // 1. VER TODOS LOS USUARIOS
     @GetMapping("/users")
@@ -33,7 +36,6 @@ public class AdminController {
     // 2. VER SOLICITUDES (Devuelve todas, pendientes primero)
     @GetMapping("/deletion-requests")
     public ResponseEntity<List<SolicitudEliminacion>> getDeletionRequests() {
-        // Podrías usar findByEstado(PENDIENTE) si solo quieres las nuevas
         return ResponseEntity.ok(solicitudRepository.findAll());
     }
 
@@ -90,14 +92,21 @@ public class AdminController {
 
     // 5. ELIMINAR CUENTA DEFINITIVAMENTE
     @DeleteMapping("/user/{id}")
-    @Transactional
+    @Transactional // Essential for multiple delete operations
     public ResponseEntity<Void> deleteUserPermanently(@PathVariable Long id) {
         Usuario user = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
+        // 1. Clean up Security & System Data
         tokenRepository.findByUsuario(user).ifPresent(tokenRepository::delete);
         solicitudRepository.deleteByUsuarioId(id);
-        
+
+        // 2. Clean up User Business Data (Fixes Integrity Violation)
+        pesoRepository.deleteByUsuario(user);
+        rutinaRepository.deleteByUsuario(user);
+        historialRepository.deleteByUsuario(user);
+
+        // 3. Finally, delete the User
         usuarioRepository.delete(user);
         
         return ResponseEntity.noContent().build();

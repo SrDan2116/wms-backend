@@ -1,6 +1,7 @@
 package com.aliaga.fittrack.repository;
 
 import com.aliaga.fittrack.entity.HistorialEntrenamiento;
+import com.aliaga.fittrack.entity.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +14,6 @@ public interface HistorialRepository extends JpaRepository<HistorialEntrenamient
     List<HistorialEntrenamiento> findByUsuarioEmailOrderByFechaHoraDesc(String email);
 
     // CONSULTA AVANZADA: Buscar la última vez que hice un ejercicio específico
-    // Esto servirá para mostrar en el frontend: "La última vez levantaste 80kg"
     @Query("""
         SELECT h FROM HistorialEntrenamiento h 
         JOIN h.ejerciciosRealizados e 
@@ -22,4 +22,5 @@ public interface HistorialRepository extends JpaRepository<HistorialEntrenamient
         ORDER BY h.fechaHora DESC
     """)
     List<HistorialEntrenamiento> encontrarHistorialPorEjercicio(@Param("email") String email, @Param("nombreEjercicio") String nombreEjercicio);
+    void deleteByUsuario(Usuario usuario);
 }
